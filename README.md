@@ -8,6 +8,7 @@ Streamlit for the page and the official `anthropic` Python SDK.
 - Replies appear as they are generated (streaming).
 - The conversation keeps its context across turns.
 - Editable system prompt and a choice of three models.
+- The model that answered, as reported by the API, under each reply.
 - Estimated cost per conversation, with a spend limit.
 - Prompt caching for the repeated part of the conversation.
 
@@ -48,3 +49,7 @@ The app has no login, so do not expose it to the internet.
 ```
 
 The tests use a mocked client and never call the API.
+
+## License
+
+[MIT](LICENSE)

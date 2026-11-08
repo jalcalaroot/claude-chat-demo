@@ -56,6 +56,8 @@ with st.sidebar:
 for message in st.session_state.display:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if "model" in message:
+            st.caption(f"Answered by {message['model']}")
 
 if st.session_state.notice:
     st.warning(st.session_state.notice)
@@ -118,7 +120,8 @@ if error is None:
     # Full content, not only the text: thinking blocks must be sent back unchanged.
     st.session_state.history.append({"role": "assistant", "content": reply.final.content})
     st.session_state.display.append({"role": "user", "content": prompt})
-    st.session_state.display.append({"role": "assistant", "content": text})
+    # The model the API reports for this reply, which differs after a fallback.
+    st.session_state.display.append({"role": "assistant", "content": text, "model": reply.final.model})
 
 st.session_state.pending = None
 st.rerun()

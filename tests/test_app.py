@@ -22,7 +22,7 @@ class FakeStream:
 
     def get_final_message(self):
         usage = NS(input_tokens=10, output_tokens=10, cache_creation_input_tokens=0, cache_read_input_tokens=0)
-        return NS(stop_reason=self.stop_reason, content=[], usage=usage)
+        return NS(stop_reason=self.stop_reason, content=[], usage=usage, model="claude-served-model")
 
 
 @pytest.fixture
@@ -45,6 +45,7 @@ def test_normal_turn_is_kept(run_turn):
     assert not app.exception
     assert [m["role"] for m in app.session_state.display] == ["user", "assistant"]
     assert app.session_state.display[1]["content"] == "Hi there"
+    assert any("Answered by claude-served-model" in c.value for c in app.caption)
     assert app.session_state.pending is None
 
 

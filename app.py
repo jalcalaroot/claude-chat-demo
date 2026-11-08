@@ -56,6 +56,8 @@ with st.sidebar:
 for message in st.session_state.display:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        for title, url in message.get("sources", []):
+            st.markdown(f"- [{title}]({url})")
         if "model" in message:
             st.caption(f"Answered by {message['model']}")
 
@@ -87,12 +89,17 @@ if blocked:
 with st.chat_message("user"):
     st.markdown(prompt)
 
-reply = chat.ReplyStream(
-    get_client(), model_id, system, [*st.session_state.history, {"role": "user", "content": prompt}]
-)
 error = None
 text = ""
 with st.chat_message("assistant"):
+    status = st.empty()
+    reply = chat.ReplyStream(
+        get_client(),
+        model_id,
+        system,
+        [*st.session_state.history, {"role": "user", "content": prompt}],
+        on_search=lambda: status.caption("Searching the web..."),
+    )
     try:
         text = st.write_stream(reply)
     except anthropic.AuthenticationError:
@@ -104,24 +111,27 @@ with st.chat_message("assistant"):
     except anthropic.APIStatusError as exc:
         error = f"The API returned an error ({exc.status_code})."
 
+    status.empty()
     if error is None and reply.final.stop_reason == "refusal":
         error = "Claude declined this request. Try asking in a different way."
+    if error is None and reply.final.stop_reason == "pause_turn":
+        error = "The search took too long. Try a narrower question."
     if error is None and reply.final.stop_reason == "max_tokens":
         st.session_state.notice = "The reply reached the length limit."
     if error:
         st.session_state.notice = error
 
-if reply.final is not None:
-    st.session_state.spent += chat.turn_cost(model_id, reply.final.usage)
+st.session_state.spent += reply.cost()
 
 # A failed or declined turn stays out of the history, so the next request is valid.
 if error is None:
     st.session_state.history.append({"role": "user", "content": prompt})
-    # Full content, not only the text: thinking blocks must be sent back unchanged.
-    st.session_state.history.append({"role": "assistant", "content": reply.final.content})
+    st.session_state.history.extend(reply.assistant_turns)
     st.session_state.display.append({"role": "user", "content": prompt})
     # The model the API reports for this reply, which differs after a fallback.
-    st.session_state.display.append({"role": "assistant", "content": text, "model": reply.final.model})
+    st.session_state.display.append(
+        {"role": "assistant", "content": text, "model": reply.final.model, "sources": reply.sources()}
+    )
 
 st.session_state.pending = None
 st.rerun()

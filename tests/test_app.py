@@ -12,13 +12,16 @@ from streamlit.testing.v1 import AppTest
 class FakeStream:
     def __init__(self, stop_reason):
         self.stop_reason = stop_reason
-        self.text_stream = ("Hi", " there")
 
     def __enter__(self):
         return self
 
     def __exit__(self, *exc):
         return False
+
+    def __iter__(self):
+        yield NS(type="text", text="Hi")
+        yield NS(type="text", text=" there")
 
     def get_final_message(self):
         usage = NS(input_tokens=10, output_tokens=10, cache_creation_input_tokens=0, cache_read_input_tokens=0)

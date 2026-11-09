@@ -13,6 +13,29 @@ Streamlit for the page and the official `anthropic` Python SDK.
 - Prompt caching for the repeated part of the conversation.
 - Web search when a question needs current information, with links to the sources.
 
+## How it works
+
+```mermaid
+flowchart LR
+    B["Browser"] -- "message" --> S["Streamlit server<br/>127.0.0.1 only"]
+    S -- "history + web_search tool" --> A["Claude API"]
+    A -- "searches when needed" --> W["Web"]
+    A -- "streamed reply, sources, usage" --> S
+    S -- "text, sources, model, cost" --> B
+```
+
+- `app.py` holds the page and the conversation state. It is the only place that
+  talks to Streamlit.
+- `chat.py` holds the allowed models, the request, the cost estimate and the
+  web search handling.
+- The API keeps no state, so each turn sends the whole conversation. Assistant
+  replies go back as full content blocks, because search results and thinking
+  must be returned unchanged.
+- Web search runs on Anthropic servers. The app only declares the tool, and
+  Claude decides when to use it.
+- The conversation lives in memory and is lost when the page closes or the
+  server stops.
+
 ## Run it
 
 Requires Python 3.12 or later.
@@ -24,7 +47,8 @@ export ANTHROPIC_API_KEY=...
 .venv/bin/streamlit run app.py
 ```
 
-Open <http://localhost:8501>.
+Open <http://localhost:8501>. The app runs until you stop it with Ctrl+C or close
+that shell.
 
 ## Controls
 
@@ -41,8 +65,8 @@ Open <http://localhost:8501>.
 
 The cost is an estimate from the token counts of each reply, public list prices
 and USD 0.01 per web search. Search results stay in the conversation, so they
-add input tokens on later turns. If a reply is declined and retried on a fallback model, the real charge
-uses that model's prices.
+add input tokens on later turns. If a reply is declined and retried on a
+fallback model, the real charge uses that model's prices.
 
 The app has no login, so do not expose it to the internet.
 
@@ -53,7 +77,9 @@ The app has no login, so do not expose it to the internet.
 .venv/bin/pytest
 ```
 
-The tests use a mocked client and never call the API.
+The tests use a mocked client and never call the API. What was tested against
+the real API, the measured costs and what could not be verified are in
+[docs/verification.md](docs/verification.md).
 
 ## License
 
